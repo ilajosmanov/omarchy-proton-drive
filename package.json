@@ -14,7 +14,7 @@
     "start:fake": "OMARCHY_DRIVE_PROVIDER=fake ./scripts/node-ts.sh daemon/src/main.ts"
   },
   "devDependencies": {
-    "@protontech/drive-sdk": "0.21.0",
+    "@protontech/drive-sdk": "0.21.1",
     "@types/node": "24.3.0",
     "typescript": "5.9.2"
   }
