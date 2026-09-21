@@ -14,6 +14,8 @@ interface Request { id: string | number; method: string; params?: Record<string,
 const SAFE_ID = /^[A-Za-z0-9._~=-]+$/;
 const MAX_NAME_LENGTH = 255;
 const RPC_TIMEOUT_MS = clampedIntegerSetting("OMARCHY_DRIVE_RPC_TIMEOUT_MS", 5 * 60_000, 1_000);
+const ACCOUNT_RETRY_MS = 10_000;
+const WATCH_STATUS_INTERVAL_MS = 10_000;
 const ACCOUNT_TTL_MS = clampedIntegerSetting("OMARCHY_DRIVE_ACCOUNT_TTL_MS", 5 * 60_000, 10_000);
 
 function requiredId(value: unknown, field: string): string {
@@ -68,7 +70,10 @@ export class RpcServer {
   }
   private async accountStatus(): Promise<{ account: AccountInfo | null; connectionError: string; checkedAt: number }> {
     if (this.accountCheckedAt === 0) await this.refreshAccount("interactive");
-    else if (Date.now() - this.accountCheckedAt >= ACCOUNT_TTL_MS) void this.refreshAccount("background");
+    else if (this.accountConnectionError && Date.now() - this.accountCheckedAt >= ACCOUNT_RETRY_MS) {
+      // Do not cache a transient network failure for the successful-account TTL.
+      await this.refreshAccount("background");
+    } else if (Date.now() - this.accountCheckedAt >= ACCOUNT_TTL_MS) void this.refreshAccount("background");
     return { account: this.account, connectionError: this.accountConnectionError, checkedAt: this.accountCheckedAt };
   }
   async listen(): Promise<void> {
@@ -128,7 +133,7 @@ export class RpcServer {
       if (typeof request.method !== "string") throw new Error("Invalid RPC method");
       if (request.params !== undefined && (!request.params || typeof request.params !== "object" || Array.isArray(request.params))) throw new Error("Invalid RPC params");
       if (request.method === "Watch") {
-        const write = (event: string, data: unknown) => socket.write(JSON.stringify({ event, data }) + "\n");
+        const write = (event: string, data: unknown) => { if (!socket.destroyed) socket.write(JSON.stringify({ event, data }) + "\n"); };
         const nodeChanged = (nodeId: string) => write("NodeChanged", { nodeId });
         const transferChanged = (transfer: unknown) => write("TransferChanged", transfer);
         const conflicts = new Set<string>();
@@ -140,10 +145,26 @@ export class RpcServer {
         this.engine.on("nodeChanged", nodeChanged); this.engine.transfers.on("changed", transferChanged);
         socket.on("close", () => { this.engine.off("nodeChanged", nodeChanged); this.engine.transfers.off("changed", transferChanged); });
         const status = await this.boundedDispatch("GetStatus", {}, disconnected.signal) as { conflicts?: unknown };
+        if (socket.destroyed) return;
         write("Status", status);
         if (Array.isArray(status.conflicts)) for (const conflict of status.conflicts) if (conflict && typeof conflict === "object" && "nodeId" in conflict) { conflicts.add(String((conflict as { nodeId: unknown }).nodeId)); write("Conflict", conflict); }
         this.engine.on("nodeChanged", syncConflict);
         socket.on("close", () => this.engine.off("nodeChanged", syncConflict));
+        // Watch must update idle clients too: network recovery need not emit
+        // any file or transfer event. Schedule after completion to avoid overlap.
+        let statusTimer: ReturnType<typeof setTimeout> | undefined;
+        const pollStatus = async () => {
+          try {
+            const current = await this.boundedDispatch("GetStatus", {}, disconnected.signal);
+            write("Status", current);
+          } catch {
+            // Let the client reconnect rather than silently keep stale status.
+            socket.destroy();
+          }
+          if (!socket.destroyed) statusTimer = setTimeout(pollStatus, WATCH_STATUS_INTERVAL_MS);
+        };
+        socket.once("close", () => { if (statusTimer) clearTimeout(statusTimer); });
+        if (!socket.destroyed) statusTimer = setTimeout(pollStatus, WATCH_STATUS_INTERVAL_MS);
         return;
       }
       const result = await this.boundedDispatch(request.method, request.params ?? {}, disconnected.signal);
@@ -208,7 +229,7 @@ export class RpcServer {
       case "ResolveConflict": return this.engine.resolveConflict(id(), conflictResolution(p.resolution), p.copyName === undefined ? undefined : requiredName(p.copyName), signal);
       case "GetTransfers": return this.engine.transfers.list();
       case "CancelTransfer": return this.engine.cancelQueuedUpload(requiredId(p.transferId, "transferId"));
-      case "Sync": await this.engine.syncQueued(); await this.engine.processEvents(); return null;
+      case "Sync": await this.refreshAccount("interactive"); await this.engine.syncQueued(); await this.engine.processEvents(); return null;
       case "ClearCache": return this.engine.clearDisposableCache();
       case "ClearPinnedCache": return this.engine.clearPinnedCache();
       default: throw new Error(`Unknown method: ${method}`);
