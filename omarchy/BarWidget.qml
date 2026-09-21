@@ -56,6 +56,12 @@ BarWidget {
     function open() { popupOpen = true }
     function close() { popupOpen = false }
     function toggle() { popupOpen = !popupOpen }
+    // The bar uses this handler to recognize clickable widgets and set its cursor.
+    function triggerPress(button) {
+        if (button !== Qt.LeftButton) return
+        if (root.bar) root.bar.hideTooltip(root)
+        root.toggle()
+    }
     function l10n(polish, english) { return english }
     function startCacheAction(kind) {
         if (root.cacheActionRunning) return
@@ -187,7 +193,7 @@ BarWidget {
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.popupOpen = !root.popupOpen
+        onClicked: function(mouse) { root.triggerPress(mouse.button) }
         onEntered: if (root.bar) root.bar.showTooltip(root, "Proton Drive · " + root.statusLabel)
         onExited: if (root.bar) root.bar.hideTooltip(root)
     }
