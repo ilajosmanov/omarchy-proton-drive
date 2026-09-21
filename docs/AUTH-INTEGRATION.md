@@ -36,6 +36,22 @@ The provider uses the official CLI for browsing, downloads and mutations. Edits 
 
 ## Session startup
 
+All three services are enabled under `graphical-session.target` and stop with
+that session. Enabling them under `default.target` is insufficient: the user
+manager can survive logout, leaving that target active while the graphical
+session stops and starts again. In that case the services stop at logout but
+are never pulled back in at the next login.
+
+The installer uses `reenable --now` to migrate existing enablement links as well
+as install new ones. For a package-only upgrade, run the following as the desktop
+user after installing the updated units (a daemon reload alone does not migrate
+existing enablement links):
+
+```sh
+systemctl --user daemon-reload
+systemctl --user reenable --now omarchy-drive.service omarchy-drive-dbus.service omarchy-drive-mount.service
+```
+
 The packaged daemon waits for Secret Service before making Proton CLI requests.
 It discovers the default collection with `ReadAlias("default")` and checks its
 `Locked` property; it does not read secrets, unlock collections, or display a

@@ -2,6 +2,7 @@
 Description=Mount Proton Drive for Omarchy in Files
 After=omarchy-drive.service
 Requires=omarchy-drive.service
+PartOf=graphical-session.target
 
 [Service]
 Type=simple
@@ -19,4 +20,4 @@ RestartSec=5
 PrivateTmp=no
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target

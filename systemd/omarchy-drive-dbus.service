@@ -20,4 +20,4 @@ RestrictSUIDSGID=yes
 LockPersonality=yes
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target

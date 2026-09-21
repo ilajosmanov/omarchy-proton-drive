@@ -42,7 +42,7 @@ grep -Fqx "$bookmark_uri" "$bookmark_file" || printf '%s\n' "$bookmark_uri" >> "
 if $fake; then
   env_dir="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy-drive"; mkdir -p "$env_dir"; umask 077
   printf 'OMARCHY_DRIVE_PROVIDER=fake\nOMARCHY_DRIVE_MOUNT="%s"\n' "$mount_environment" > "$env_dir/environment"
-  systemctl --user daemon-reload; systemctl --user enable --now omarchy-drive.service omarchy-drive-dbus.service omarchy-drive-mount.service
+  systemctl --user daemon-reload; systemctl --user reenable --now omarchy-drive.service omarchy-drive-dbus.service omarchy-drive-mount.service
 else
   printf '\nThis is an unofficial third-party application not supported by Proton.\n'
   printf 'Authentication is handled by Proton Drive CLI in your browser; this project never receives your password.\n\n'
@@ -55,7 +55,7 @@ else
   env_dir="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy-drive"; mkdir -p "$env_dir"; umask 077
   cli_environment=${cli_target//\\/\\\\}; cli_environment=${cli_environment//\"/\\\"}
   printf 'OMARCHY_DRIVE_PROVIDER=proton-cli\nOMARCHY_DRIVE_CLI="%s"\nOMARCHY_DRIVE_MOUNT="%s"\n' "$cli_environment" "$mount_environment" > "$env_dir/environment"
-  systemctl --user daemon-reload; systemctl --user enable --now omarchy-drive.service omarchy-drive-dbus.service omarchy-drive-mount.service
+  systemctl --user daemon-reload; systemctl --user reenable --now omarchy-drive.service omarchy-drive-dbus.service omarchy-drive-mount.service
   printf 'Click the Proton icon in the Omarchy bar and choose Zaloguj się.\n'
 fi
 omarchy-shell shell rescanPlugins || true

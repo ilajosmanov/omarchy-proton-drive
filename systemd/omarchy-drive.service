@@ -1,6 +1,6 @@
 [Unit]
 Description=Proton Drive for Omarchy background service
-After=graphical-session.target
+After=graphical-session-pre.target
 PartOf=graphical-session.target
 
 [Service]
@@ -20,4 +20,4 @@ RestrictSUIDSGID=yes
 LockPersonality=yes
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target
