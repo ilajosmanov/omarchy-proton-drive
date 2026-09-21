@@ -1,3 +1,7 @@
+import { promisify } from "node:util";
+import { setTimeout as delay } from "node:timers/promises";
+import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { FakeDriveProvider } from "./fake-provider.ts";
@@ -20,6 +24,24 @@ if (!["fake", "proton-cli"].includes(providerName)) {
   console.error("Set OMARCHY_DRIVE_PROVIDER=fake or proton-cli.");
   process.exitCode = 78;
 } else {
+  // Wait inside the daemon process, not ExecStartPre: dependent mount/bridge
+  // units must remain eligible to retry while the keyring becomes available.
+  // No account data is read by this metadata-only readiness check.
+  if (providerName === "proton-cli") {
+    for (;;) {
+      try {
+        await promisify(execFile)("/usr/bin/python3", [fileURLToPath(new URL("../../ipc/wait_secret_service.py", import.meta.url))], {
+          timeout: 35_000,
+        });
+        break;
+      } catch {
+        // Keep this service alive so Requires= dependents are not stopped.
+        // Each probe is bounded; a later unlock needs no manual restart.
+        console.error(JSON.stringify({ level: "warn", event: "waiting_for_secret_service" }));
+        await delay(5_000);
+      }
+    }
+  }
   // ProtonSdkProvider is a tested seam for a future event-driven client and is
   // intentionally not selectable here (see docs/ARCHITECTURE.md).
   const provider = providerName === "fake"

@@ -9,7 +9,7 @@ Type=simple
 UMask=0077
 Environment="OMARCHY_DRIVE_MOUNT=%h/.local/share/omarchy-drive/mount"
 EnvironmentFile=-%E/omarchy-drive/environment
-ExecStart=/usr/lib/omarchy-drive/ipc/dbus/omarchy_drive_dbus.py
+ExecStart=/usr/bin/python3 /usr/lib/omarchy-drive/ipc/dbus/omarchy_drive_dbus.py
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=yes

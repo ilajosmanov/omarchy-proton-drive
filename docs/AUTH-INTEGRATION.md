@@ -33,3 +33,28 @@ Real-account support may be enabled only when all of the following are true:
 `OfficialCliProvider` invokes only Proton's official CLI with argument arrays. Passwords and session tokens never cross project IPC or process arguments. Browser login and session refresh stay inside the upstream executable, and credentials remain under service `ch.proton.drive/drive-sdk-cli` in the OS secret store.
 
 The provider uses the official CLI for browsing, downloads and mutations. Edits are guarded by a fresh remote revision check and use the CLI's `create-new-revision` strategy, so a detected remote change is preserved as a local conflict instead of silently replacing the remote file. The CLI owns authentication, cryptography and its internal event cursor; this project emits refresh markers because the CLI does not expose its event stream.
+
+## Session startup
+
+The packaged daemon waits for Secret Service before making Proton CLI requests.
+It discovers the default collection with `ReadAlias("default")` and checks its
+`Locked` property; it does not read secrets, unlock collections, or display a
+prompt. No GNOME-specific service name or collection path is required. A service
+with no default collection is allowed through so first-time CLI login can create
+one. The fake provider and unconfigured startup do not contact Secret Service.
+
+Each readiness attempt is bounded (2 seconds per D-Bus attempt, 30 seconds per
+probe, with a 35-second parent timeout). If unavailable or locked, the daemon
+stays alive and retries after 5 seconds, logging only a generic readiness event.
+Its RPC socket is not opened until ready; the mount and bridge use their existing
+reconnect/restart behavior. Unlock the keyring through the desktop's normal flow;
+no manual daemon restart is needed. This check handles startup readiness, not
+keyring locks or credential revocation after startup.
+
+The packaged mount and D-Bus units invoke `/usr/bin/python3` explicitly, matching
+the Arch Python dependencies regardless of mise/pyenv/virtualenv entries in PATH.
+They do not replace the user's PATH. Existing local systemd overrides are not
+removed automatically; administrators may remove equivalent startup workarounds
+after upgrading and validating the packaged services.
+
+Protocol reference: https://specifications.freedesktop.org/secret-service/latest-single/

@@ -11,7 +11,7 @@ EnvironmentFile=-%E/omarchy-drive/environment
 # Nautilus can keep the old FUSE endpoint open after logout.  Clean up a
 # stale endpoint before starting a new session so login/retry can recover.
 ExecStartPre=-/usr/bin/fusermount3 -uzq ${OMARCHY_DRIVE_MOUNT}
-ExecStart=/usr/lib/omarchy-drive/filesystem/fuse/omarchy-drive-fuse.py ${OMARCHY_DRIVE_MOUNT} --socket %t/omarchy-drive.sock
+ExecStart=/usr/bin/python3 /usr/lib/omarchy-drive/filesystem/fuse/omarchy-drive-fuse.py ${OMARCHY_DRIVE_MOUNT} --socket %t/omarchy-drive.sock
 ExecStop=-/usr/bin/fusermount3 -uzq ${OMARCHY_DRIVE_MOUNT}
 Restart=on-failure
 RestartSec=5

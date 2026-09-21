@@ -19,6 +19,7 @@ for path in \
   usr/lib/omarchy-drive/daemon/src/settings.ts \
   usr/lib/omarchy-drive/filesystem/fuse/omarchy-drive-fuse.py \
   usr/lib/omarchy-drive/ipc/rpc_client.py \
+  usr/lib/omarchy-drive/ipc/wait_secret_service.py \
   usr/lib/omarchy-drive/ipc/dbus/omarchy_drive_dbus.py; do
   [[ -f $package_root/$path ]] || { printf 'Packaged file missing: %s\n' "$path" >&2; exit 1; }
 done
