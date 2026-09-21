@@ -9,7 +9,17 @@ BarWidget {
     id: root
     moduleName: "placq.proton-drive"
 
-    readonly property var driveService: bar && bar.shell ? bar.shell.serviceFor(moduleName) : null
+    readonly property var sharedDriveService: bar && bar.shell ? bar.shell.serviceFor(moduleName) : null
+    readonly property var driveService: sharedDriveService || localService.item
+
+    // Replacement bars cannot expose the host's service objects. Listen to
+    // the daemon locally when no shared service is available.
+    Loader {
+        id: localService
+        active: root.bar && root.bar.shell && !root.sharedDriveService
+        sourceComponent: Service {}
+    }
+
     readonly property bool connected: driveService ? driveService.connected : false
     readonly property bool loading: driveService ? driveService.loading : true
     readonly property string provider: driveService ? driveService.provider : "unconfigured"
